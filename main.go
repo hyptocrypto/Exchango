@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,7 +35,7 @@ type Order struct {
 	CreatedAt      time.Time
 }
 
-func update_price(db *gorm.DB) {
+func update_data(db *gorm.DB) {
 	resp, http_error := http.Get("https://poloniex.com/public?command=returnTicker")
 	if http_error != nil {
 		panic(http_error)
@@ -118,6 +119,14 @@ func interface_to_float(data interface{}) float64 {
 	return f
 }
 
+// func interface_to_float(data interface{}) float64 {
+// 	f, err := strconv.ParseFloat(data.(string), 64)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return f
+// }
+
 func setup(db *gorm.DB) {
 	db.AutoMigrate(&Trading_Pair{}, &Order{})
 	seed(db)
@@ -138,17 +147,17 @@ func seed(db *gorm.DB) {
 
 func get_all_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var data []Trading_Pair
-		db.Find(&data)
+		var all_data []Trading_Pair
+		db.Find(&all_data)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(data)
+		json.NewEncoder(w).Encode(all_data)
 	}
 }
 
 func get_btc_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data []Trading_Pair
-		db.First(&data).Where("Ticker=?", "USDT_BTC")
+		db.Where("Ticker=?", "USDT_BTC").First(&data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
 	}
@@ -157,7 +166,7 @@ func get_btc_data(db *gorm.DB) http.HandlerFunc {
 func get_eth_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data []Trading_Pair
-		db.First(&data).Where("Ticker=?", "USDT_ETH")
+		db.Where("Ticker=?", "USDT_ETH").First(&data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
 	}
@@ -165,7 +174,7 @@ func get_eth_data(db *gorm.DB) http.HandlerFunc {
 func get_xmr_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data []Trading_Pair
-		db.First(&data).Where("Ticker=?", "USDT_xmr")
+		db.Where("Ticker=?", "USDT_XMR").First(&data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
 	}
@@ -173,7 +182,7 @@ func get_xmr_data(db *gorm.DB) http.HandlerFunc {
 func get_ltc_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data []Trading_Pair
-		db.First(&data).Where("Ticker=?", "USDT_LTC")
+		db.Where("Ticker=?", "USDT_LTC").First(&data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
 	}
@@ -181,9 +190,36 @@ func get_ltc_data(db *gorm.DB) http.HandlerFunc {
 func get_dash_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data []Trading_Pair
-		db.First(&data).Where("Ticker=?", "USDT_DASH")
+		db.Where("Ticker=?", "USDT_DASH").First(&data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
+	}
+}
+func new_order(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var data map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&data)
+		var trading_pair Trading_Pair
+		db.First(&trading_pair, "Ticker=?", data["Trading_Pair"])
+		order := Order{Trading_PairID: trading_pair.ID,
+			Trading_Pair: trading_pair,
+			Order_type:   data["Order_type"].(string),
+			Amount:       data["Amount"].(float64),
+			Settled:      data["Settled"].(bool)}
+		db.Create(&order)
+		db.Save(&order)
+
+		fmt.Println(order)
+		fmt.Printf("%T", order)
+	}
+}
+func get_all_orders(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var all_data []Order
+		db.Model(&Order{}).Preload("Trading_Pair").Find(&all_data)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(all_data)
 	}
 }
 
@@ -204,6 +240,9 @@ func main() {
 	r.HandleFunc("/api/xmr", get_xmr_data(db)).Methods("GET")
 	r.HandleFunc("/api/ltc", get_ltc_data(db)).Methods("GET")
 	r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
+	r.HandleFunc("/api/orders/all", get_all_orders(db)).Methods("GET")
+	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
+	// r.HandleFunc("/api/orders/{id}", update_order().Methods("PUT"))
 	log.Fatal(http.ListenAndServe(":8000", r))
 
 	// setup(db)
@@ -211,7 +250,7 @@ func main() {
 
 	// for {
 	// 	time.Sleep(10 * time.Second)
-	// 	update_price(db)
+	// 	update_data(db)
 	// }
 
 }

@@ -29,10 +29,16 @@ type Order struct {
 	gorm.Model
 	Trading_PairID uint
 	Trading_Pair   Trading_Pair
-	Order_type     string
+	Order_Type     string
 	Amount         float64
 	Settled        bool
-	CreatedAt      time.Time
+}
+
+func update_data_live(db *gorm.DB) {
+	for {
+		update_data(db)
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func update_data(db *gorm.DB) {
@@ -92,23 +98,6 @@ func update_data(db *gorm.DB) {
 		Precent_Change: interface_to_float(dash.(map[string]interface{})["percentChange"]),
 	})
 
-	// var curs []Trading_Pair
-	// db.Find(&curs)
-	// for _, c := range curs {
-	// 	fmt.Println(c)
-	// }
-
-	// var test = btc.(map[string]interface{})["last"]
-	// f, err := strconv.ParseFloat(test.(string), 64)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("%T", interface_to_float(btc.(map[string]interface{})["last"]))
-	// fmt.Println(eth.(map[string]interface{})["last"])
-	// fmt.Println(xmr.(map[string]interface{})["last"])
-	// fmt.Println(ltc.(map[string]interface{})["last"])
-	// fmt.Println(dash.(map[string]interface{})["last"])
-
 }
 
 func interface_to_float(data interface{}) float64 {
@@ -117,32 +106,6 @@ func interface_to_float(data interface{}) float64 {
 		panic(err)
 	}
 	return f
-}
-
-// func interface_to_float(data interface{}) float64 {
-// 	f, err := strconv.ParseFloat(data.(string), 64)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return f
-// }
-
-func setup(db *gorm.DB) {
-	db.AutoMigrate(&Trading_Pair{}, &Order{})
-	seed(db)
-}
-
-func seed(db *gorm.DB) {
-	trading_pairs := []Trading_Pair{
-		{Ticker: "USDT_BTC", Price: 40000, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_LTC", Price: 150, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_ETH", Price: 1200, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_XMR", Price: 170, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_DASH", Price: 100, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-	}
-	for _, pair := range trading_pairs {
-		db.Create(&pair)
-	}
 }
 
 func get_all_data(db *gorm.DB) http.HandlerFunc {
@@ -204,14 +167,11 @@ func new_order(db *gorm.DB) http.HandlerFunc {
 		db.First(&trading_pair, "Ticker=?", data["Trading_Pair"])
 		order := Order{Trading_PairID: trading_pair.ID,
 			Trading_Pair: trading_pair,
-			Order_type:   data["Order_type"].(string),
+			Order_Type:   data["Order_type"].(string),
 			Amount:       data["Amount"].(float64),
 			Settled:      data["Settled"].(bool)}
 		db.Create(&order)
-		db.Save(&order)
 
-		fmt.Println(order)
-		fmt.Printf("%T", order)
 	}
 }
 func get_all_orders(db *gorm.DB) http.HandlerFunc {
@@ -220,6 +180,36 @@ func get_all_orders(db *gorm.DB) http.HandlerFunc {
 		db.Model(&Order{}).Preload("Trading_Pair").Find(&all_data)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(all_data)
+	}
+}
+func update_order(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var data map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&data)
+		var order Order
+		db.Find(&order, "ID=?", data["ID"])
+		db.Model(&order).Update("Settled", true)
+		db.First(&order, "ID=?", data["ID"])
+		fmt.Printf("%+v\n", order)
+	}
+}
+
+func setup(db *gorm.DB) {
+	db.AutoMigrate(&Trading_Pair{}, &Order{})
+	seed_db(db)
+}
+
+func seed_db(db *gorm.DB) {
+	trading_pairs := []Trading_Pair{
+		{Ticker: "USDT_BTC", Price: 40000, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
+		{Ticker: "USDT_LTC", Price: 150, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
+		{Ticker: "USDT_ETH", Price: 1200, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
+		{Ticker: "USDT_XMR", Price: 170, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
+		{Ticker: "USDT_DASH", Price: 100, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
+	}
+	for _, pair := range trading_pairs {
+		db.Create(&pair)
 	}
 }
 
@@ -233,6 +223,7 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
+	go update_data_live(db)
 	r := mux.NewRouter()
 	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
 	r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
@@ -242,15 +233,12 @@ func main() {
 	r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
 	r.HandleFunc("/api/orders/all", get_all_orders(db)).Methods("GET")
 	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
-	// r.HandleFunc("/api/orders/{id}", update_order().Methods("PUT"))
+	r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
 	log.Fatal(http.ListenAndServe(":8000", r))
 
-	// setup(db)
-	// seed(db)
-
-	// for {
-	// 	time.Sleep(10 * time.Second)
-	// 	update_data(db)
-	// }
+	for {
+		time.Sleep(10 * time.Second)
+		update_data(db)
+	}
 
 }

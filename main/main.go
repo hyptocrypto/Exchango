@@ -37,7 +37,7 @@ type Order struct {
 func update_data_live(db *gorm.DB) {
 	for {
 		update_data(db)
-		time.Sleep(10 * time.Second)
+		time.Sleep(60 * time.Second)
 	}
 }
 
@@ -195,26 +195,8 @@ func update_order(db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func setup(db *gorm.DB) {
-	db.AutoMigrate(&Trading_Pair{}, &Order{})
-	seed_db(db)
-}
-
-func seed_db(db *gorm.DB) {
-	trading_pairs := []Trading_Pair{
-		{Ticker: "USDT_BTC", Price: 40000, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_LTC", Price: 150, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_ETH", Price: 1200, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_XMR", Price: 170, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-		{Ticker: "USDT_DASH", Price: 100, Daily_Volume: 0, Daily_High: 0, Daily_Low: 0, Precent_Change: 0},
-	}
-	for _, pair := range trading_pairs {
-		db.Create(&pair)
-	}
-}
-
 func main() {
-	db, err := gorm.Open(sqlite.Open("mock_exchange.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -234,11 +216,6 @@ func main() {
 	r.HandleFunc("/api/orders/all", get_all_orders(db)).Methods("GET")
 	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
 	r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
-	log.Fatal(http.ListenAndServe(":8000", r))
-
-	for {
-		time.Sleep(10 * time.Second)
-		update_data(db)
-	}
+	log.Fatal(http.ListenAndServe(":8080", r))
 
 }

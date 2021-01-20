@@ -205,7 +205,7 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-	go update_data_live(db)
+	// go update_data_live(db)
 	r := mux.NewRouter()
 	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
 	r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")

@@ -107,6 +107,13 @@ func interface_to_float(data interface{}) float64 {
 	}
 	return f
 }
+func string_to_bool(data interface{}) bool {
+	f, err := strconv.ParseBool(data.(string))
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
 
 func get_all_data(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -163,13 +170,15 @@ func new_order(db *gorm.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		var data map[string]interface{}
 		_ = json.NewDecoder(r.Body).Decode(&data)
+		amount_val := interface_to_float(data["Amount"].(string))
+		settled_val := string_to_bool(data["Settled"].(string))
 		var trading_pair Trading_Pair
 		db.First(&trading_pair, "Ticker=?", data["Trading_Pair"])
 		order := Order{Trading_PairID: trading_pair.ID,
 			Trading_Pair: trading_pair,
 			Order_Type:   data["Order_type"].(string),
-			Amount:       data["Amount"].(float64),
-			Settled:      data["Settled"].(bool)}
+			Amount:       amount_val,
+			Settled:      settled_val}
 		db.Create(&order)
 
 	}

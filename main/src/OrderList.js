@@ -59,8 +59,8 @@ class OrderList extends React.Component {
                             </tr>
                         </thead>
                         {items.map(item => (
-                            <tbody>
-                                <tr key={item.ID}>
+                            <tbody key={item.ID}>
+                                <tr>
                                     <th>{item.ID}</th>
                                     <th>{item.Trading_Pair.Ticker}</th>
                                     <th>{item.Amount}</th>

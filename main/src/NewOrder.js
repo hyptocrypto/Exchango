@@ -5,7 +5,7 @@ import Card from 'react-bootstrap/Card'
 class NewOrder extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { value: '' };
+        this.state = { ticker: '' };
 
         this.handleTickerChange = this.handleTickerChange.bind(this);
         this.handleAmountChange = this.handleAmountChange.bind(this);
@@ -41,7 +41,7 @@ class NewOrder extends React.Component {
         this.setState({ amount: event.target.value });
     }
     handleOrderTypeChange(event) {
-        this.setState({ order_type: event.target.value });
+        this.setState({ ordertype: event.target.value });
     }
 
     handleSubmit(event) {
@@ -50,15 +50,20 @@ class NewOrder extends React.Component {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(
                 {
-                    "Trading_Pair": this.state.Trading_Pair.value,
-                    "Ammount": this.state.Amout.value,
-                    "Order_Type": this.state.Order_Type.value,
-                }
-
-            )
+                    "Trading_Pair": this.state.ticker,
+                    "Amount": this.state.amount,
+                    "Order_type": this.state.ordertype,
+                    "Settled": "false"
+                })
         }
-        console.log(postdata);
-        event.preventDefault();
+        console.log(postdata)
+        fetch('/api/orders/new', postdata)
+            .then(response => response.json)
+            .then(function (response) {
+                console.log(response)
+            }
+                // event.preventDefault();
+            )
     }
 
     render() {
@@ -79,7 +84,7 @@ class NewOrder extends React.Component {
                             <form onSubmit={this.handleSubmit}>
                                 <label style={elmStyle}>
                                     Trading Pair:
-                            <select name='Trading_Pair' value={this.state.Ticker} onChange={this.handleTickerChange}>
+                            <select name='Trading_Pair' value={this.state.ticker} onChange={this.handleTickerChange}>
                                         {items.map(item => (
                                             <option key={item.ID} value={item.Ticker}>{item.Ticker}</option>
                                         ))}
@@ -87,16 +92,16 @@ class NewOrder extends React.Component {
                                 </label>
                                 <label style={elmStyle}>
                                     Amount:
-                                    <input name='Amount' onChange value={this.state.Amout} type='text' pattern='[0-9]*' placeholder='Integer Only' />
+                                    <input name='Amount' onChange={this.handleAmountChange} value={this.state.amount} type='text' pattern='[0-9]*' placeholder='Integer Only' />
                                 </label>
                                 <label style={elmStyle}>
                                     Order Type:
-                                    <select name='Order_Type' value={this.state.Order_Type} onChange={this.handleChange}>
+                                    <select name='Order_Type' value={this.state.ordertype} onChange={this.handleOrderTypeChange}>
                                         <option vlaue='Buy'>Buy</option>
                                         <option vlaue='Sell'>Sell</option>
                                     </select>
                                 </label>
-                                <button onClick={this.handleSubmit}> Submit </button>
+                                <button type='button' onClick={this.handleSubmit}> Submit </button>
                             </form>
                         </Card.Body>
                     </Card>

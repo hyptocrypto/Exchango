@@ -56,7 +56,7 @@ class OrderList extends React.Component {
                                 <th>Amount</th>
                                 <th>Price</th>
                                 <th>Type</th>
-                                <th>Settled</th>
+                                <th>Partially Settled</th>
                             </tr>
                         </thead>
                         {items.map(item => (
@@ -64,10 +64,10 @@ class OrderList extends React.Component {
                                 <tr>
                                     <th>{item.ID}</th>
                                     <th>{item.Trading_Pair.Ticker}</th>
-                                    <th>{item.Amount}</th>
+                                    <th>{item.Current_Amount}</th>
                                     <th>{item.Price}</th>
                                     <th>{item.Order_Type}</th>
-                                    <th>{item.Settled.toString()}</th>
+                                    <th>{item.Partial_Settled.toString()}</th>
                                 </tr>
                             </tbody>
                         ))}

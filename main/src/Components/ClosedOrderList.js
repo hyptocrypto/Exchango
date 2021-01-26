@@ -64,7 +64,7 @@ class ClosedOrderList extends React.Component {
                                 <tr>
                                     <th>{item.ID}</th>
                                     <th>{item.Trading_Pair.Ticker}</th>
-                                    <th>{item.Amount}</th>
+                                    <th>{item.Opening_Amount}</th>
                                     <th>{item.Price}</th>
                                     <th>{item.Order_Type}</th>
                                     <th>{item.Settled.toString()}</th>

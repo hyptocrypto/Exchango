@@ -31,15 +31,17 @@ type Orders struct {
 	Trading_PairID uint
 	Trading_Pair   Trading_Pair
 	Order_Type     string
-	Amount         float64
+	Opening_Amount float64
+    Current_Amount float64
 	Settled        bool
+	Partial_Settled bool
 	Price          float64
 }
 
 func update_data_live(db *gorm.DB) {
 	for {
 		update_data(db)
-		time.Sleep(5 * time.Second)
+		time.Sleep(60 * time.Second)
 	}
 }
 func update_worker(db *gorm.DB, data interface{}, pair string, wg *sync.WaitGroup){
@@ -163,9 +165,11 @@ func new_order(db *gorm.DB) http.HandlerFunc {
 		order := Orders{Trading_PairID: trading_pair.ID,
 			Trading_Pair: trading_pair,
 			Order_Type:   data["Order_type"].(string),
-			Amount:       amount_val,
+			Opening_Amount:       amount_val,
+			Current_Amount:		amount_val, 
 			Price:        price_val,
-			Settled:      settled_val}
+			Settled:      settled_val,
+			Partial_Settled: settled_val}
 		db.Create(&order)
 
 	}
@@ -200,28 +204,83 @@ func update_order(db *gorm.DB) http.HandlerFunc {
 }
 func open_sell_orders(db *gorm.DB) []Orders {
 	var all_data []Orders
-	db.Raw("SELECT * FROM Orders WHERE Price in (select price from Orders group by price having count(*)>1) AND Order_type=?", "Sell").Scan(&all_data)
+	db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_type=? AND Settled=?", "Sell", false)
+	// db.Raw("SELECT * FROM Orders WHERE Price in (select price from Orders group by price having count(*)>1) AND Order_type=?", "Sell").Scan(&all_data)
 	return all_data
 }
 
 func open_buy_orders(db *gorm.DB) []Orders {
 	var all_data []Orders
-	db.Raw("SELECT * FROM Orders WHERE Price in (select price from Orders group by price having count(*)>1) AND Order_type=?", "Buy").Scan(&all_data)
+	db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_type=? And Settled=?", "Buy", false)
 	return all_data
 }
 
+func settle_orders_live(db *gorm.DB){
+	for{
+		settle_orders(db)
+		time.Sleep(10 * time.Second)
+
+
+	}
+}
 func settle_orders(db *gorm.DB) {
 	buy_orders := open_buy_orders(db)
 	sell_orders := open_sell_orders(db)
 	for buy_index, buy := range buy_orders {
 		for sell_index, sell := range sell_orders {
-			if buy.Amount > sell.Amount {
-				fmt.Println(buy_index, buy.Amount)
-				fmt.Println(sell_index, sell.Amount)
-			}
+			fmt.Println(buy_index, sell_index)
+			fmt.Println(buy.Trading_Pair.Ticker, sell.Trading_Pair.Ticker)
+			if buy.Trading_Pair.Ticker != sell.Trading_Pair.Ticker {
+			} else {
+				if buy.Current_Amount > sell.Current_Amount && sell.Current_Amount > 0{
+					fmt.Println("buy - sell")
+					fmt.Println(buy.Current_Amount, sell.Current_Amount)
+					buy.Current_Amount = buy.Current_Amount - sell.Current_Amount
+					sell.Current_Amount = 0
+					fmt.Println("buy new value ", buy.Current_Amount)
+
+					var buy_order Orders
+					var sell_order Orders
+					db.Find(&buy_order, "ID=?", buy.ID)
+					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": buy.Current_Amount, "Partial_Settled": true})
+					db.Find(&sell_order, "ID=?", sell.ID)
+					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
+
+					}
+				if sell.Current_Amount > buy.Current_Amount && buy.Current_Amount > 0 {
+					fmt.Println("sell - buy")
+					sell.Current_Amount = sell.Current_Amount - buy.Current_Amount
+					buy.Current_Amount = 0
+					fmt.Println(sell.Current_Amount, buy.Current_Amount)
+					fmt.Println("sell new value ", sell.Current_Amount)
+
+					var buy_order Orders
+					var sell_order Orders
+					db.Find(&sell_order, "ID=?", sell.ID)
+					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": sell.Current_Amount, "Partial_Settled": true})
+					db.Find(&buy_order, "ID=?", buy.ID)
+					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
+
+					}
+				if buy.Current_Amount ==  sell.Current_Amount {
+					fmt.Println("buy = sell")
+					fmt.Println(buy.Current_Amount, sell.Current_Amount)
+					buy.Current_Amount = 0
+					sell.Current_Amount = 0
+					fmt.Println("new value ", buy.Current_Amount)
+
+					var buy_order Orders
+					var sell_order Orders
+					db.Find(&buy_order, "ID=?", buy.ID)
+					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
+					db.Find(&sell_order, "ID=?", sell.ID)
+					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
+				}
+
 		}
 	}
 
+}
 }
 
 func main() {
@@ -234,7 +293,10 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
+	settle_orders(db)
+
 	go update_data_live(db)
+	go settle_orders_live(db)
 	r := mux.NewRouter()
 	// r.HandleFunc("/api/settle", settle_orders(db)).Methods("GET")
 	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")

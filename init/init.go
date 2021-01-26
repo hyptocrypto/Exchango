@@ -16,17 +16,18 @@ type trading_pair struct {
 	Precent_Change float64
 }
 
-type order struct {
+type orders struct {
 	gorm.Model
 	Trading_PairID uint
 	Trading_Pair   trading_pair
 	Order_Type     string
 	Amount         float64
 	Settled        bool
+	Price          float64
 }
 
 func setup(db *gorm.DB) {
-	db.AutoMigrate(&trading_pair{}, &order{})
+	db.AutoMigrate(&trading_pair{}, &orders{})
 	seed(db)
 }
 

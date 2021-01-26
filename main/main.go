@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
 	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -25,13 +23,14 @@ type Trading_Pair struct {
 	Precent_Change float64
 }
 
-type Order struct {
+type Orders struct {
 	gorm.Model
 	Trading_PairID uint
 	Trading_Pair   Trading_Pair
 	Order_Type     string
 	Amount         float64
 	Settled        bool
+	Price          float64
 }
 
 func update_data_live(db *gorm.DB) {
@@ -171,22 +170,32 @@ func new_order(db *gorm.DB) http.HandlerFunc {
 		var data map[string]interface{}
 		_ = json.NewDecoder(r.Body).Decode(&data)
 		amount_val := interface_to_float(data["Amount"].(string))
+		price_val := interface_to_float(data["Price"].(string))
 		settled_val := string_to_bool(data["Settled"].(string))
 		var trading_pair Trading_Pair
 		db.First(&trading_pair, "Ticker=?", data["Trading_Pair"])
-		order := Order{Trading_PairID: trading_pair.ID,
+		order := Orders{Trading_PairID: trading_pair.ID,
 			Trading_Pair: trading_pair,
 			Order_Type:   data["Order_type"].(string),
 			Amount:       amount_val,
+			Price:        price_val,
 			Settled:      settled_val}
 		db.Create(&order)
 
 	}
 }
-func get_all_orders(db *gorm.DB) http.HandlerFunc {
+func get_open_orders(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var all_data []Order
-		db.Model(&Order{}).Preload("Trading_Pair").Find(&all_data)
+		var all_data []Orders
+		db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", false)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(all_data)
+	}
+}
+func get_closed_orders(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var all_data []Orders
+		db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", true)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(all_data)
 	}
@@ -196,12 +205,37 @@ func update_order(db *gorm.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		var data map[string]interface{}
 		_ = json.NewDecoder(r.Body).Decode(&data)
-		var order Order
+		var order Orders
 		db.Find(&order, "ID=?", data["ID"])
 		db.Model(&order).Update("Settled", true)
 		db.First(&order, "ID=?", data["ID"])
 		fmt.Printf("%+v\n", order)
 	}
+}
+func open_sell_orders(db *gorm.DB) []Orders {
+	var all_data []Orders
+	db.Raw("SELECT * FROM Orders WHERE Price in (select price from Orders group by price having count(*)>1) AND Order_type=?", "Sell").Scan(&all_data)
+	return all_data
+}
+
+func open_buy_orders(db *gorm.DB) []Orders {
+	var all_data []Orders
+	db.Raw("SELECT * FROM Orders WHERE Price in (select price from Orders group by price having count(*)>1) AND Order_type=?", "Buy").Scan(&all_data)
+	return all_data
+}
+
+func settle_orders(db *gorm.DB) bool {
+	buy_orders := open_buy_orders(db)
+	sell_orders := open_sell_orders(db)
+	for buy_index, buy := range buy_orders {
+		for sell_index, sell := range sell_orders {
+			if buy.Amount > sell.Amount {
+				fmt.Println(buy_index, buy.Amount)
+				fmt.Println(sell_index, sell.Amount)
+			}
+		}
+	}
+	return true
 }
 
 func main() {
@@ -214,17 +248,19 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-	// go update_data_live(db)
-	r := mux.NewRouter()
-	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
-	r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
-	r.HandleFunc("/api/eth", get_eth_data(db)).Methods("GET")
-	r.HandleFunc("/api/xmr", get_xmr_data(db)).Methods("GET")
-	r.HandleFunc("/api/ltc", get_ltc_data(db)).Methods("GET")
-	r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
-	r.HandleFunc("/api/orders/all", get_all_orders(db)).Methods("GET")
-	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
-	r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
-	log.Fatal(http.ListenAndServe(":8080", r))
-
+	settle_orders(db)
+	// // go update_data_live(db)
+	// r := mux.NewRouter()
+	// r.HandleFunc("/api/settle", settle_orders(db)).Methods("GET")
+	// r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
+	// r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
+	// r.HandleFunc("/api/eth", get_eth_data(db)).Methods("GET")
+	// r.HandleFunc("/api/xmr", get_xmr_data(db)).Methods("GET")
+	// r.HandleFunc("/api/ltc", get_ltc_data(db)).Methods("GET")
+	// r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
+	// r.HandleFunc("/api/orders/open", get_open_orders(db)).Methods("GET")
+	// r.HandleFunc("/api/orders/closed", get_closed_orders(db)).Methods("GET")
+	// r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
+	// r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
+	// log.Fatal(http.ListenAndServe(":8080", r))
 }

@@ -3,12 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
+	"sync"
 
 	"gorm.io/driver/sqlite"
+	"github.com/gorilla/mux"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -36,8 +39,19 @@ type Orders struct {
 func update_data_live(db *gorm.DB) {
 	for {
 		update_data(db)
-		time.Sleep(60 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
+}
+func update_worker(db *gorm.DB, data interface{}, pair string, wg *sync.WaitGroup){
+	defer wg.Done()
+	db.Model(&Trading_Pair{}).Where("Ticker = ?", pair).Updates(Trading_Pair{
+		Price:          interface_to_float(data.(map[string]interface{})["last"]),
+		Daily_Volume:   interface_to_float(data.(map[string]interface{})["baseVolume"]),
+		Daily_High:     interface_to_float(data.(map[string]interface{})["high24hr"]),
+		Daily_Low:      interface_to_float(data.(map[string]interface{})["low24hr"]),
+		Precent_Change: interface_to_float(data.(map[string]interface{})["percentChange"]),
+	})
+
 }
 
 func update_data(db *gorm.DB) {
@@ -55,48 +69,20 @@ func update_data(db *gorm.DB) {
 	if data_json_error != nil {
 		panic(data_json_error)
 	}
-	var btc = data["USDT_BTC"]
-	var eth = data["USDT_ETH"]
-	var xmr = data["USDT_XMR"]
-	var ltc = data["USDT_LTC"]
-	var dash = data["USDT_DASH"]
 
-	db.Model(&Trading_Pair{}).Where("Ticker = ?", "USDT_BTC").Updates(Trading_Pair{
-		Price:          interface_to_float(btc.(map[string]interface{})["last"]),
-		Daily_Volume:   interface_to_float(btc.(map[string]interface{})["baseVolume"]),
-		Daily_High:     interface_to_float(btc.(map[string]interface{})["high24hr"]),
-		Daily_Low:      interface_to_float(btc.(map[string]interface{})["low24hr"]),
-		Precent_Change: interface_to_float(btc.(map[string]interface{})["percentChange"]),
-	})
-	db.Model(&Trading_Pair{}).Where("Ticker = ?", "USDT_ETH").Updates(Trading_Pair{
-		Price:          interface_to_float(eth.(map[string]interface{})["last"]),
-		Daily_Volume:   interface_to_float(eth.(map[string]interface{})["baseVolume"]),
-		Daily_High:     interface_to_float(eth.(map[string]interface{})["high24hr"]),
-		Daily_Low:      interface_to_float(eth.(map[string]interface{})["low24hr"]),
-		Precent_Change: interface_to_float(eth.(map[string]interface{})["percentChange"]),
-	})
-	db.Model(&Trading_Pair{}).Where("Ticker = ?", "USDT_XMR").Updates(Trading_Pair{
-		Price:          interface_to_float(xmr.(map[string]interface{})["last"]),
-		Daily_Volume:   interface_to_float(xmr.(map[string]interface{})["baseVolume"]),
-		Daily_High:     interface_to_float(xmr.(map[string]interface{})["high24hr"]),
-		Daily_Low:      interface_to_float(xmr.(map[string]interface{})["low24hr"]),
-		Precent_Change: interface_to_float(xmr.(map[string]interface{})["percentChange"]),
-	})
-	db.Model(&Trading_Pair{}).Where("Ticker = ?", "USDT_LTC").Updates(Trading_Pair{
-		Price:          interface_to_float(ltc.(map[string]interface{})["last"]),
-		Daily_Volume:   interface_to_float(ltc.(map[string]interface{})["baseVolume"]),
-		Daily_High:     interface_to_float(ltc.(map[string]interface{})["high24hr"]),
-		Daily_Low:      interface_to_float(ltc.(map[string]interface{})["low24hr"]),
-		Precent_Change: interface_to_float(ltc.(map[string]interface{})["percentChange"]),
-	})
-	db.Model(&Trading_Pair{}).Where("Ticker = ?", "USDT_DASH").Updates(Trading_Pair{
-		Price:          interface_to_float(dash.(map[string]interface{})["last"]),
-		Daily_Volume:   interface_to_float(dash.(map[string]interface{})["baseVolume"]),
-		Daily_High:     interface_to_float(dash.(map[string]interface{})["high24hr"]),
-		Daily_Low:      interface_to_float(dash.(map[string]interface{})["low24hr"]),
-		Precent_Change: interface_to_float(dash.(map[string]interface{})["percentChange"]),
-	})
+	pairs := map[string]interface{}{
+		"USDT_BTC": data["USDT_BTC"],
+	 	"USDT_ETH": data["USDT_ETH"],
+	 	"USDT_XMR": data["USDT_XMR"],
+	  	"USDT_LTC": data["USDT_LTC"],
+	   	"USDT_DASH": data["USDT_DASH"]}
+	var wg sync.WaitGroup
 
+	for key, value := range pairs{
+		wg.Add(1)
+		go update_worker(db, value, key, &wg)
+	}
+	wg.Wait()
 }
 
 func interface_to_float(data interface{}) float64 {
@@ -224,7 +210,7 @@ func open_buy_orders(db *gorm.DB) []Orders {
 	return all_data
 }
 
-func settle_orders(db *gorm.DB) bool {
+func settle_orders(db *gorm.DB) {
 	buy_orders := open_buy_orders(db)
 	sell_orders := open_sell_orders(db)
 	for buy_index, buy := range buy_orders {
@@ -235,7 +221,7 @@ func settle_orders(db *gorm.DB) bool {
 			}
 		}
 	}
-	return true
+
 }
 
 func main() {
@@ -248,19 +234,18 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-	settle_orders(db)
-	// // go update_data_live(db)
-	// r := mux.NewRouter()
+	go update_data_live(db)
+	r := mux.NewRouter()
 	// r.HandleFunc("/api/settle", settle_orders(db)).Methods("GET")
-	// r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
-	// r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
-	// r.HandleFunc("/api/eth", get_eth_data(db)).Methods("GET")
-	// r.HandleFunc("/api/xmr", get_xmr_data(db)).Methods("GET")
-	// r.HandleFunc("/api/ltc", get_ltc_data(db)).Methods("GET")
-	// r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
-	// r.HandleFunc("/api/orders/open", get_open_orders(db)).Methods("GET")
-	// r.HandleFunc("/api/orders/closed", get_closed_orders(db)).Methods("GET")
-	// r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
-	// r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
-	// log.Fatal(http.ListenAndServe(":8080", r))
+	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
+	r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
+	r.HandleFunc("/api/eth", get_eth_data(db)).Methods("GET")
+	r.HandleFunc("/api/xmr", get_xmr_data(db)).Methods("GET")
+	r.HandleFunc("/api/ltc", get_ltc_data(db)).Methods("GET")
+	r.HandleFunc("/api/dash", get_dash_data(db)).Methods("GET")
+	r.HandleFunc("/api/orders/open", get_open_orders(db)).Methods("GET")
+	r.HandleFunc("/api/orders/closed", get_closed_orders(db)).Methods("GET")
+	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
+	r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }

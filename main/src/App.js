@@ -1,13 +1,17 @@
 import React from 'react';
 import './App.css';
-import OrderList from './OrderList'
-import NewOrder from './NewOrder'
+import OpenOrderList from './Components/OpenOrderList'
+import ClosedOrderList from "./Components/ClosedOrderList"
+import NewOrder from './Components/NewOrder'
+import TradingPairs from './Components/TradingPairs'
 
 function App() {
   return (
     <>
+      <TradingPairs />
       <NewOrder />
-      <OrderList />
+      <OpenOrderList />
+      <ClosedOrderList />
     </>
   )
 }

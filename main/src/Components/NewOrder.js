@@ -1,15 +1,23 @@
 import React from 'react';
-import './App.css';
+import '../App.css';
 import Card from 'react-bootstrap/Card'
-import Select from 'react-select'
+
 
 class NewOrder extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { selectedOption: null };
+        this.state = {
+            selectedOption: '',
+            ticker: 'USDT_BTC',
+            amount: 0,
+            price: 0,
+            ordertype: 'Buy',
+            items: []
+        };
 
         this.handleTickerChange = this.handleTickerChange.bind(this);
         this.handleAmountChange = this.handleAmountChange.bind(this);
+        this.handlePriceChange = this.handlePriceChange.bind(this);
         this.handleOrderTypeChange = this.handleOrderTypeChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
     }
@@ -19,7 +27,6 @@ class NewOrder extends React.Component {
             .then(
                 (result) => {
                     this.setState({
-                        isLoaded: true,
                         items: result
                     });
                 },
@@ -28,7 +35,6 @@ class NewOrder extends React.Component {
                 // exceptions from actual bugs in components.
                 (error) => {
                     this.setState({
-                        isLoaded: true,
                         error
                     });
                 }
@@ -41,13 +47,16 @@ class NewOrder extends React.Component {
     handleAmountChange(event) {
         this.setState({ amount: event.target.value });
     }
+    handlePriceChange(event) {
+        this.setState({ price: event.target.value });
+    }
     handleOrderTypeChange(event) {
         this.setState({ ordertype: event.target.value });
     }
     handleChange = (selectedOption) => {
         this.setState({ selectedOption });
         console.log(selectedOption)
-      }
+    }
     handleSubmit(event) {
         const postdata = {
             method: 'POST',
@@ -56,6 +65,7 @@ class NewOrder extends React.Component {
                 {
                     "Trading_Pair": this.state.ticker,
                     "Amount": this.state.amount,
+                    "Price": this.state.price,
                     "Order_type": this.state.ordertype,
                     "Settled": "false"
                 })
@@ -65,29 +75,18 @@ class NewOrder extends React.Component {
             .then(response => response.json)
             .then(function (response) {
                 console.log(response)
-            }
-                // event.preventDefault();
-            )
+            })
         window.location.reload()
     }
 
     render() {
-        const { selectedOption } = this.state;
         const CardStyle = { padding: '50px' }
         const elmStyle = { padding: '20px' }
         const hStyle = { textAlign: 'center', };
-        const options = this.props.items.map((item, index) => {
-            return {
-                label: item.Ticker,
-                value: item.Ticker,
-                key: index
-            }
-        })
-        const { items, error, isLoaded } = this.state;
+        const { items, error } = this.state;
+
         if (error) {
             return <div>Error: {error.message}</div>;
-        } else if (!isLoaded) {
-            return <div>Loading...</div>;
         } else {
             return (
                 <div style={CardStyle}>
@@ -97,16 +96,15 @@ class NewOrder extends React.Component {
                             <form onSubmit={this.handleSubmit}>
                                 <label style={elmStyle}>
                                     Trading Pair:
-                            {/* <select name='Trading_Pair' value={this.state.ticker} onChange={this.handleTickerChange}>
+                            <select name='Trading_Pair' value={this.state.ticker} onChange={this.handleTickerChange}>
                                         {items.map(item => (
                                             <option key={item.ID} value={item.Ticker}>{item.Ticker}</option>
                                         ))}
-                                    </select> */}
-                                <Select
-                                    value={selectedOption}
-                                    onChange={this.handleChange}
-                                    options={options}
-                                    />
+                                    </select>
+                                </label>
+                                <label style={elmStyle}>
+                                    Price:
+                                    <input name='Price' onChange={this.handlePriceChange} value={this.state.price} type='text' pattern='[0-9]*' placeholder='Integer Only' />
                                 </label>
                                 <label style={elmStyle}>
                                     Amount:

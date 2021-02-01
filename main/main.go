@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
-	"time"
 	"sync"
+	"time"
 
-	"gorm.io/driver/sqlite"
 	"github.com/gorilla/mux"
+	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -28,14 +28,14 @@ type Trading_Pair struct {
 
 type Orders struct {
 	gorm.Model
-	Trading_PairID uint
-	Trading_Pair   Trading_Pair
-	Order_Type     string
-	Opening_Amount float64
-    Current_Amount float64
-	Settled        bool
+	Trading_PairID  uint
+	Trading_Pair    Trading_Pair
+	Order_Type      string
+	Opening_Amount  float64
+	Current_Amount  float64
+	Settled         bool
 	Partial_Settled bool
-	Price          float64
+	Price           float64
 }
 
 func update_data_live(db *gorm.DB) {
@@ -44,7 +44,7 @@ func update_data_live(db *gorm.DB) {
 		time.Sleep(60 * time.Second)
 	}
 }
-func update_worker(db *gorm.DB, data interface{}, pair string, wg *sync.WaitGroup){
+func update_worker(db *gorm.DB, data interface{}, pair string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	db.Model(&Trading_Pair{}).Where("Ticker = ?", pair).Updates(Trading_Pair{
 		Price:          interface_to_float(data.(map[string]interface{})["last"]),
@@ -73,14 +73,14 @@ func update_data(db *gorm.DB) {
 	}
 
 	pairs := map[string]interface{}{
-		"USDT_BTC": data["USDT_BTC"],
-	 	"USDT_ETH": data["USDT_ETH"],
-	 	"USDT_XMR": data["USDT_XMR"],
-	  	"USDT_LTC": data["USDT_LTC"],
-	   	"USDT_DASH": data["USDT_DASH"]}
+		"USDT_BTC":  data["USDT_BTC"],
+		"USDT_ETH":  data["USDT_ETH"],
+		"USDT_XMR":  data["USDT_XMR"],
+		"USDT_LTC":  data["USDT_LTC"],
+		"USDT_DASH": data["USDT_DASH"]}
 	var wg sync.WaitGroup
 
-	for key, value := range pairs{
+	for key, value := range pairs {
 		wg.Add(1)
 		go update_worker(db, value, key, &wg)
 	}
@@ -163,12 +163,12 @@ func new_order(db *gorm.DB) http.HandlerFunc {
 		var trading_pair Trading_Pair
 		db.First(&trading_pair, "Ticker=?", data["Trading_Pair"])
 		order := Orders{Trading_PairID: trading_pair.ID,
-			Trading_Pair: trading_pair,
-			Order_Type:   data["Order_type"].(string),
-			Opening_Amount:       amount_val,
-			Current_Amount:		amount_val, 
-			Price:        price_val,
-			Settled:      settled_val,
+			Trading_Pair:    trading_pair,
+			Order_Type:      data["Order_type"].(string),
+			Opening_Amount:  amount_val,
+			Current_Amount:  amount_val,
+			Price:           price_val,
+			Settled:         settled_val,
 			Partial_Settled: settled_val}
 		db.Create(&order)
 
@@ -215,11 +215,10 @@ func open_buy_orders(db *gorm.DB) []Orders {
 	return all_data
 }
 
-func settle_orders_live(db *gorm.DB){
-	for{
+func settle_orders_live(db *gorm.DB) {
+	for {
 		settle_orders(db)
 		time.Sleep(10 * time.Second)
-
 
 	}
 }
@@ -232,42 +231,45 @@ func settle_orders(db *gorm.DB) {
 			fmt.Println(buy.Trading_Pair.Ticker, sell.Trading_Pair.Ticker)
 			if buy.Trading_Pair.Ticker != sell.Trading_Pair.Ticker {
 			} else {
-				if buy.Current_Amount > sell.Current_Amount && sell.Current_Amount > 0{
+				fmt.Println("buy", buy_orders[buy_index].Current_Amount)
+				fmt.Println("sell", sell_orders[sell_index].Current_Amount)
+				if buy_orders[buy_index].Current_Amount > sell_orders[sell_index].Current_Amount && sell_orders[sell_index].Current_Amount > 0 {
 					fmt.Println("buy - sell")
-					fmt.Println(buy.Current_Amount, sell.Current_Amount)
-					buy.Current_Amount = buy.Current_Amount - sell.Current_Amount
-					sell.Current_Amount = 0
-					fmt.Println("buy new value ", buy.Current_Amount)
+					fmt.Println(buy_orders[buy_index].Current_Amount, sell_orders[sell_index].Current_Amount)
+					buy_orders[buy_index].Current_Amount = buy.Current_Amount - sell.Current_Amount
+					sell_orders[sell_index].Current_Amount = 0
+					fmt.Println("buy new value ", buy_orders[buy_index].Current_Amount)
+					fmt.Println("sell new value", sell_orders[sell_index].Current_Amount)
 
 					var buy_order Orders
 					var sell_order Orders
 					db.Find(&buy_order, "ID=?", buy.ID)
-					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": buy.Current_Amount, "Partial_Settled": true})
+					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": buy_orders[buy_index].Current_Amount, "Partial_Settled": true})
 					db.Find(&sell_order, "ID=?", sell.ID)
 					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
 
-					}
-				if sell.Current_Amount > buy.Current_Amount && buy.Current_Amount > 0 {
+				}
+				if sell_orders[sell_index].Current_Amount > buy_orders[buy_index].Current_Amount && buy_orders[buy_index].Current_Amount > 0 {
 					fmt.Println("sell - buy")
-					sell.Current_Amount = sell.Current_Amount - buy.Current_Amount
-					buy.Current_Amount = 0
-					fmt.Println(sell.Current_Amount, buy.Current_Amount)
-					fmt.Println("sell new value ", sell.Current_Amount)
+					sell_orders[sell_index].Current_Amount = sell_orders[sell_index].Current_Amount - buy_orders[sell_index].Current_Amount
+					buy_orders[buy_index].Current_Amount = 0
+					fmt.Println(sell_orders[sell_index].Current_Amount, buy_orders[buy_index].Current_Amount)
+					fmt.Println("sell new value ", sell_orders[sell_index].Current_Amount)
 
 					var buy_order Orders
 					var sell_order Orders
 					db.Find(&sell_order, "ID=?", sell.ID)
-					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": sell.Current_Amount, "Partial_Settled": true})
+					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": sell_orders[sell_index].Current_Amount, "Partial_Settled": true})
 					db.Find(&buy_order, "ID=?", buy.ID)
 					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
 
-					}
-				if buy.Current_Amount ==  sell.Current_Amount {
+				}
+				if buy_orders[buy_index].Current_Amount == sell_orders[sell_index].Current_Amount {
 					fmt.Println("buy = sell")
-					fmt.Println(buy.Current_Amount, sell.Current_Amount)
-					buy.Current_Amount = 0
-					sell.Current_Amount = 0
-					fmt.Println("new value ", buy.Current_Amount)
+					fmt.Println(buy_orders[buy_index].Current_Amount, sell_orders[sell_index].Current_Amount)
+					buy_orders[buy_index].Current_Amount = 0
+					sell_orders[sell_index].Current_Amount = 0
+					fmt.Println("new value ", buy_orders[buy_index].Current_Amount)
 
 					var buy_order Orders
 					var sell_order Orders
@@ -275,12 +277,13 @@ func settle_orders(db *gorm.DB) {
 					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
 					db.Find(&sell_order, "ID=?", sell.ID)
 					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
+
 				}
 
+			}
 		}
-	}
 
-}
+	}
 }
 
 func main() {

@@ -18,12 +18,14 @@ type trading_pair struct {
 
 type orders struct {
 	gorm.Model
-	Trading_PairID uint
-	Trading_Pair   trading_pair
-	Order_Type     string
-	Amount         float64
-	Settled        bool
-	Price          float64
+	Trading_PairID  uint
+	Trading_Pair    trading_pair
+	Order_Type      string
+	Opening_Amount  float64
+	Current_Amount  float64
+	Settled         bool
+	Partial_Settled bool
+	Price           float64
 }
 
 func setup(db *gorm.DB) {

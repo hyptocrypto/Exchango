@@ -19,6 +19,7 @@ class OrderList extends React.Component {
             .then(res => res.json())
             .then(
                 (result) => {
+                    console.log(typeof result)
                     this.setState({
                         isLoaded: true,
                         items: result
@@ -34,6 +35,33 @@ class OrderList extends React.Component {
                     });
                 }
             )
+
+        const comp = this;
+        let socket = new WebSocket("ws://localhost:8000/ws");
+        console.log('Attempting to connect to websocket');
+        socket.onopen = () => {
+            console.log("Client Connected");
+            socket.send("Hello from client")
+        }
+        socket.onclose = (event) => {
+            console.log("Socket Closed Connection: ", event);
+        }
+        socket.onerror = (error) => {
+            console.log("Socker Error: ", error);
+        }
+        socket.onmessage = (msg) => {
+            console.log(msg)
+            var obj = JSON.parse(msg.data)
+            let data = obj.open_orders
+            console.log(data)
+            console.log(Array.isArray(data))
+            console.log(comp)
+            comp.setState({
+                isLoaded: true,
+                items: data
+            });
+            console.log(comp)
+        }
     }
     // useEffect(() => {
     //         fuction fetchdatat() {

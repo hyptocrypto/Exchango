@@ -76,7 +76,6 @@ class NewOrder extends React.Component {
             .then(function (response) {
                 console.log(response)
             })
-        window.location.reload()
     }
 
     render() {

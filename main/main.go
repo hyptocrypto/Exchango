@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/hyptocrypto/trade_api/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -182,6 +183,24 @@ func get_open_orders(db *gorm.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(all_data)
 	}
 }
+func ws_open_orders(db *gorm.DB) []byte {
+	var all_data []Orders
+	db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", true)
+	data, err := json.Marshal(all_data)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return data
+}
+
+// func ws_open_orders(db *gorm.DB) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		var all_data []Orders
+// 		db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", false)
+// 		w.Header().Set("Content-Type", "application/json")
+// 		json.NewEncoder(w).Encode(all_data)
+// 	}
+// }
 func get_closed_orders(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var all_data []Orders
@@ -286,6 +305,31 @@ func settle_orders(db *gorm.DB) {
 	}
 }
 
+func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("WebSocket Endpoint Hit")
+	conn, err := websocket.Upgrade(w, r)
+	if err != nil {
+		fmt.Fprintf(w, "%+v\n", err)
+	}
+
+	client := &websocket.Client{
+		Conn: conn,
+		Pool: pool,
+	}
+
+	pool.Register <- client
+	client.Read()
+}
+func setupwsRoutes(router *mux.Router) {
+	pool := websocket.NewPool()
+	go pool.Start()
+	go pool.Databroadcast()
+
+	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(pool, w, r)
+	})
+}
+
 func main() {
 	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
 	if err != nil {
@@ -296,12 +340,12 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-	settle_orders(db)
 
+	settle_orders(db)
 	go update_data_live(db)
 	go settle_orders_live(db)
 	r := mux.NewRouter()
-	// r.HandleFunc("/api/settle", settle_orders(db)).Methods("GET")
+	setupwsRoutes(r)
 	r.HandleFunc("/api/all", get_all_data(db)).Methods("GET")
 	r.HandleFunc("/api/btc", get_btc_data(db)).Methods("GET")
 	r.HandleFunc("/api/eth", get_eth_data(db)).Methods("GET")
@@ -312,5 +356,5 @@ func main() {
 	r.HandleFunc("/api/orders/closed", get_closed_orders(db)).Methods("GET")
 	r.HandleFunc("/api/orders/new", new_order(db)).Methods("POST")
 	r.HandleFunc("/api/orders/update", update_order(db)).Methods("PUT")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8000", r))
 }

@@ -35,9 +35,34 @@ class OrderList extends React.Component {
             )
     }
 
+    // useEffect(() => {
+    //         fuction fetchdatat() {
+    //             try {
+    //                 const response = await fetch("/api/orders/open");
+    //                 if (!response.ok) { throw Error(response.statusText); }
+    //                 const json = await response.json();
+    //                 this.setState({ items: json });
+    //                 console.log(json);
+    //             }
+    //             catch (error) { console.log(error); }
+    //         }
+    //     }
+    //     )
+    // async fetchdata() {
+    //     try {
+    //         const response = await fetch("/api/orders/open");
+    //         if (!response.ok) { throw Error(response.statusText); }
+    //         const json = await response.json();
+    //         this.setState({ items: json });
+    //         console.log(json);
+    //     }
+    //     catch (error) { console.log(error); }
+
+    // }
+
 
     render() {
-        const { error, isLoaded, items } = this.state;
+        const { error, isLoaded } = this.state;
         const hStyle = { textAlign: 'center', };
         const tableStyle = { padding: '50px' };
         if (error) {
@@ -59,7 +84,7 @@ class OrderList extends React.Component {
                                 <th>Partially Settled</th>
                             </tr>
                         </thead>
-                        {items.map(item => (
+                        {this.state.items.map(item => (
                             <tbody key={item.ID}>
                                 <tr>
                                     <th>{item.ID}</th>

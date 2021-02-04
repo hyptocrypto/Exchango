@@ -51,37 +51,27 @@ func (pool *Pool) Start() {
 		case client := <-pool.Register:
 			pool.Clients[client] = true
 			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
-			for client, _ := range pool.Clients {
-				fmt.Println(client)
-				client.Conn.WriteJSON(Message{Type: 1, Body: "New User Joined..."})
-			}
+			// for client, _ := range pool.Clients {
+			// 	fmt.Println(client)
+			// 	client.Conn.WriteJSON(Message{Type: 1, Body: "New User Joined..."})
+			// }
 			break
 		case client := <-pool.Unregister:
 			delete(pool.Clients, client)
 			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
-			for client, _ := range pool.Clients {
-				client.Conn.WriteJSON(Message{Type: 1, Body: "User Disconnected..."})
-			}
 			break
-			// case message := <-pool.Broadcast:
-			// 	fmt.Println("Sending message to all clients in Pool")
-			// 	for client, _ := range pool.Clients {
-			// 		if err := client.Conn.WriteJSON(message); err != nil {
-			// 			fmt.Println(err)
-			// 			return
-			// 	}
-			// }
+
 		}
 	}
 }
 
-func ws_open_orders(db *gorm.DB) string {
-	var open_orders orders
-	var closed_orders orders
+func ws_open_orders(db *gorm.DB) map[string]interface{} {
+	var open_orders []orders
+	var closed_orders []orders
 	db.Model(&orders{}).Preload("Trading_Pair").Find(&open_orders, "Settled=?", false)
 	db.Model(&orders{}).Preload("Trading_Pair").Find(&closed_orders, "Settled=?", true)
-	all_orders := map[string]interface{"open_orders": open_orders, "closed_orders": closed_orders}
-	return string(all_orders)
+	all_orders := map[string]interface{}{"open_orders": open_orders, "closed_orders": closed_orders}
+	return all_orders
 }
 
 func (pool *Pool) Databroadcast() {
@@ -99,7 +89,9 @@ func (pool *Pool) Databroadcast() {
 		data := ws_open_orders(db)
 		for client, _ := range pool.Clients {
 			if err := client.Conn.WriteJSON(data); err != nil {
-				fmt.Println(err, t)
+				delete(pool.Clients, client)
+				fmt.Println("Client Pruged at: ", t)
+				fmt.Println("Size of Connection Pool:  ", len(pool.Clients))
 			}
 		}
 	}

@@ -15,26 +15,26 @@ class OrderList extends React.Component {
 
 
     componentDidMount() {
-        fetch("/api/orders/open")
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    console.log(typeof result)
-                    this.setState({
-                        isLoaded: true,
-                        items: result
-                    });
-                },
-                // Note: it's important to handle errors here
-                // instead of a catch() block so that we don't swallow
-                // exceptions from actual bugs in components.
-                (error) => {
-                    this.setState({
-                        isLoaded: true,
-                        error
-                    });
-                }
-            )
+        // fetch("/api/orders/open")
+        //     .then(res => res.json())
+        //     .then(
+        //         (result) => {
+        //             console.log(typeof result)
+        //             this.setState({
+        //                 isLoaded: true,
+        //                 items: result
+        //             });
+        //         },
+        //         // Note: it's important to handle errors here
+        //         // instead of a catch() block so that we don't swallow
+        //         // exceptions from actual bugs in components.
+        //         (error) => {
+        //             this.setState({
+        //                 isLoaded: true,
+        //                 error
+        //             });
+        //         }
+        //     )
 
         const comp = this;
         let socket = new WebSocket("ws://localhost:8000/ws");

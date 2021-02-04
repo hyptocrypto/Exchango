@@ -11,9 +11,7 @@ function App() {
     <>
       <TradingPairs />
       <NewOrder />
-      <OpenOrderList />
-      <ClosedOrderList />
-      <WSorders />
+      <OpenOrderList /><ClosedOrderList />
     </>
   )
 }

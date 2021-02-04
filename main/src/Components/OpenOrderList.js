@@ -13,6 +13,7 @@ class OrderList extends React.Component {
         };
     }
 
+
     componentDidMount() {
         fetch("/api/orders/open")
             .then(res => res.json())
@@ -34,7 +35,6 @@ class OrderList extends React.Component {
                 }
             )
     }
-
     // useEffect(() => {
     //         fuction fetchdatat() {
     //             try {

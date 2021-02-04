@@ -14,7 +14,6 @@ function App() {
       <OpenOrderList />
       <ClosedOrderList />
       <WSorders />
-      <WSorders />
     </>
   )
 }

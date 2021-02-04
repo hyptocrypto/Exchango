@@ -340,9 +340,7 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-
-	settle_orders(db)
-	go update_data_live(db)
+	// go update_data_live(db)
 	go settle_orders_live(db)
 	r := mux.NewRouter()
 	setupwsRoutes(r)

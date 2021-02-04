@@ -11,7 +11,16 @@ function App() {
     <>
       <TradingPairs />
       <NewOrder />
-      <OpenOrderList /><ClosedOrderList />
+      <div class="container">
+        <div class="row">
+          <div class="col">
+            <OpenOrderList />
+          </div>
+          <div class="col">
+            <ClosedOrderList />
+          </div>
+        </div>
+      </div>
     </>
   )
 }

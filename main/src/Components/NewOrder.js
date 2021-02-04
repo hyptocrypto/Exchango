@@ -69,12 +69,14 @@ class NewOrder extends React.Component {
                     "Order_type": this.state.ordertype,
                     "Settled": "false"
                 })
+
         }
         console.log(postdata)
         fetch('/api/orders/new', postdata)
             .then(response => response.json)
             .then(function (response) {
                 console.log(response)
+                window.confirm("Order Submitted!")
             })
     }
 
@@ -102,12 +104,12 @@ class NewOrder extends React.Component {
                                     </select>
                                 </label>
                                 <label style={elmStyle}>
-                                    Price:
-                                    <input name='Price' onChange={this.handlePriceChange} value={this.state.price} type='text' pattern='[0-9]*' placeholder='Integer Only' />
-                                </label>
-                                <label style={elmStyle}>
                                     Amount:
                                     <input name='Amount' onChange={this.handleAmountChange} value={this.state.amount} type='text' pattern='[0-9]*' placeholder='Integer Only' />
+                                </label>
+                                <label style={elmStyle}>
+                                    Price:
+                                    <input name='Price' onChange={this.handlePriceChange} value={this.state.price} type='text' pattern='[0-9]*' placeholder='Integer Only' />
                                 </label>
                                 <label style={elmStyle}>
                                     Order Type:

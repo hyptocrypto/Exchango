@@ -89,9 +89,9 @@ func (pool *Pool) Databroadcast() {
 		data := ws_open_orders(db)
 		for client, _ := range pool.Clients {
 			if err := client.Conn.WriteJSON(data); err != nil {
+				client.Pool.Unregister <- client
 				delete(pool.Clients, client)
 				fmt.Println("Client Pruged at: ", t)
-				fmt.Println("Size of Connection Pool:  ", len(pool.Clients))
 			}
 		}
 	}

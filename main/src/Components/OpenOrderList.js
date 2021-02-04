@@ -63,36 +63,12 @@ class OrderList extends React.Component {
             console.log(comp)
         }
     }
-    // useEffect(() => {
-    //         fuction fetchdatat() {
-    //             try {
-    //                 const response = await fetch("/api/orders/open");
-    //                 if (!response.ok) { throw Error(response.statusText); }
-    //                 const json = await response.json();
-    //                 this.setState({ items: json });
-    //                 console.log(json);
-    //             }
-    //             catch (error) { console.log(error); }
-    //         }
-    //     }
-    //     )
-    // async fetchdata() {
-    //     try {
-    //         const response = await fetch("/api/orders/open");
-    //         if (!response.ok) { throw Error(response.statusText); }
-    //         const json = await response.json();
-    //         this.setState({ items: json });
-    //         console.log(json);
-    //     }
-    //     catch (error) { console.log(error); }
-
-    // }
 
 
     render() {
         const { error, isLoaded } = this.state;
         const hStyle = { textAlign: 'center', };
-        const tableStyle = { padding: '50px' };
+        const tableStyle = { padding: '10px' };
         if (error) {
             return <div>Error: {error.message}</div>;
         } else if (!isLoaded) {

@@ -67,7 +67,7 @@ class ClosedOrderList extends React.Component {
     render() {
         const { error, isLoaded, items } = this.state;
         const hStyle = { textAlign: 'center', };
-        const tableStyle = { padding: '50px' };
+        const tableStyle = { padding: '10px' };
         if (error) {
             return <div>Error: {error.message}</div>;
         } else if (!isLoaded) {

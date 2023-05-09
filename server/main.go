@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/hyptocrypto/trade_api/pkg/websocket"
+	"github.com/hyptocrypto/go_exchange_api/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -193,14 +193,14 @@ func ws_open_orders(db *gorm.DB) []byte {
 	return data
 }
 
-// func ws_open_orders(db *gorm.DB) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		var all_data []Orders
-// 		db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", false)
-// 		w.Header().Set("Content-Type", "application/json")
-// 		json.NewEncoder(w).Encode(all_data)
-// 	}
-// }
+//	func ws_open_orders(db *gorm.DB) http.HandlerFunc {
+//		return func(w http.ResponseWriter, r *http.Request) {
+//			var all_data []Orders
+//			db.Model(&Orders{}).Preload("Trading_Pair").Find(&all_data, "Settled=?", false)
+//			w.Header().Set("Content-Type", "application/json")
+//			json.NewEncoder(w).Encode(all_data)
+//		}
+//	}
 func get_closed_orders(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var all_data []Orders
@@ -331,7 +331,8 @@ func setupwsRoutes(router *mux.Router) {
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("./mock_exchange.db"), &gorm.Config{})
+	fmt.Println(db)
 	if err != nil {
 		panic(err)
 	}

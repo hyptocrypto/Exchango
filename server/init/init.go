@@ -47,7 +47,7 @@ func seed(db *gorm.DB) {
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("mock_exchange.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

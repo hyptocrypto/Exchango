@@ -5,32 +5,12 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hyptocrypto/go_exchange_api/server/config"
+	"github.com/hyptocrypto/go_exchange_api/server/models"
 	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
-
-type trading_pair struct {
-	gorm.Model
-	Ticker         string
-	Price          float64
-	Daily_Volume   float64
-	Daily_High     float64
-	Daily_Low      float64
-	Precent_Change float64
-}
-
-type orders struct {
-	gorm.Model
-	Trading_PairID  uint
-	Trading_Pair    trading_pair
-	Order_Type      string
-	Opening_Amount  float64
-	Current_Amount  float64
-	Settled         bool
-	Partial_Settled bool
-	Price           float64
-}
 
 // func (db *gorm.DB) http.HandlerFunc {
 // 	return func(w http.ResponseWriter, r *http.Request) {
@@ -69,9 +49,9 @@ func create_orders(db *gorm.DB) {
 	for i := 0; i < 50; i++ {
 		a := randomInt(1, 6)
 		amount := float64(amounts[rand.Intn(len(amounts))])
-		var pair trading_pair
+		var pair models.Trading_Pairs
 		db.First(&pair, "Ticker=?", trading_pairs[a])
-		order := orders{Trading_PairID: uint(a),
+		order := models.Orders{Trading_PairID: uint(a),
 			Trading_Pair:    pair,
 			Order_Type:      types[rand.Intn(len(types))],
 			Opening_Amount:  amount,
@@ -79,7 +59,7 @@ func create_orders(db *gorm.DB) {
 			Price:           float64(prices[rand.Intn(len(prices))]),
 			Settled:         false,
 			Partial_Settled: false}
-		// db.Create(&order)
+		db.Create(&order)
 		fmt.Println(order)
 		time.Sleep(2 * time.Second)
 	}
@@ -90,7 +70,7 @@ func randomInt(min, max int) int {
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(config.DB_Path), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

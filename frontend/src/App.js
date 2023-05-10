@@ -11,7 +11,7 @@ function App() {
     <>
       <TradingPairs />
       <NewOrder />
-      <div class="container">
+      <div style={{marginBottom: "200px"}} class="container">
         <div class="row">
           <div class="col">
             <OpenOrderList />

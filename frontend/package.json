@@ -10,7 +10,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  "author": "",
+  "proxy": "http://localhost:8000",
+  "author": "Julian Baumgartner",
   "license": "ISC",
   "dependencies": {
     "bootstrap": "^5.2.3",

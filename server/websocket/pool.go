@@ -4,31 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hyptocrypto/go_exchange_api/server/config"
+	"github.com/hyptocrypto/go_exchange_api/server/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-type trading_pair struct {
-	gorm.Model
-	Ticker         string
-	Price          float64
-	Daily_Volume   float64
-	Daily_High     float64
-	Daily_Low      float64
-	Precent_Change float64
-}
-
-type orders struct {
-	gorm.Model
-	Trading_PairID  uint
-	Trading_Pair    trading_pair
-	Order_Type      string
-	Opening_Amount  float64
-	Current_Amount  float64
-	Settled         bool
-	Partial_Settled bool
-	Price           float64
-}
 type Pool struct {
 	Register   chan *Client
 	Unregister chan *Client
@@ -66,16 +47,16 @@ func (pool *Pool) Start() {
 }
 
 func ws_open_orders(db *gorm.DB) map[string]interface{} {
-	var open_orders []orders
-	var closed_orders []orders
-	db.Model(&orders{}).Preload("Trading_Pair").Find(&open_orders, "Settled=?", false)
-	db.Model(&orders{}).Preload("Trading_Pair").Find(&closed_orders, "Settled=?", true)
+	var open_orders []models.Orders
+	var closed_orders []models.Orders
+	db.Model(&models.Orders{}).Preload("Trading_Pair").Find(&open_orders, "Settled=?", false)
+	db.Model(&models.Orders{}).Preload("Trading_Pair").Find(&closed_orders, "Settled=?", true)
 	all_orders := map[string]interface{}{"open_orders": open_orders, "closed_orders": closed_orders}
 	return all_orders
 }
 
 func (pool *Pool) Databroadcast() {
-	db, err := gorm.Open(sqlite.Open("../mock_exchange.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(config.DB_Path), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

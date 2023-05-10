@@ -210,7 +210,7 @@ func open_sell_orders(db *gorm.DB) []models.Orders {
 
 func open_buy_orders(db *gorm.DB) []models.Orders {
 	var all_data []models.Orders
-	db.Model(&models.Orders{}).Preload("Trading_Pair").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? And Settled=?", "Buy", false)
+	db.Model(&models.Orders{}).Preload("Trading_Pairg").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? And Settled=?", "Buy", false)
 	return all_data
 }
 

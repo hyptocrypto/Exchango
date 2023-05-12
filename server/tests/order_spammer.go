@@ -61,7 +61,7 @@ func create_orders(db *gorm.DB) {
 			Partial_Settled: false}
 		db.Create(&order)
 		fmt.Println(order)
-		time.Sleep(2 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 }

@@ -1,4 +1,4 @@
-# :woozy_face: LETS MAKE AN ORDER MATCHING ALGORITHM :woozy_face:
+# :flushed: LETS MAKE AN ORDER MATCHING ALGORITHM :flushed:
 
 ### Abstract
 The idea here is to implement a standard FIFO order matching algorithm in Golang. 

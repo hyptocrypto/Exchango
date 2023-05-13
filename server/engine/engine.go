@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func update_data_live(db *gorm.DB) {
+func Update_data_live(db *gorm.DB) {
 	for {
 		update_data(db)
 		time.Sleep(60 * time.Second)
@@ -64,14 +64,17 @@ func update_data(db *gorm.DB) {
 
 func open_sell_orders(db *gorm.DB) []models.Orders {
 	var all_data []models.Orders
-	db.Model(&models.Orders{}).Preload("Trading_Pair").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? AND Settled=?", "Sell", false)
-	// db.Raw("SELECT * FROM models.Orders WHERE Price in (select price from models.Orders group by price having count(*)>1) AND Order_type=?", "Sell").Scan(&all_data)
+	db.Model(&models.Orders{}).
+		Preload("Trading_Pair").
+		Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? AND Settled=?", "Sell", false)
 	return all_data
 }
 
 func open_buy_orders(db *gorm.DB) []models.Orders {
 	var all_data []models.Orders
-	db.Model(&models.Orders{}).Preload("Trading_Pair").Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? And Settled=?", "Buy", false)
+	db.Model(&models.Orders{}).
+		Preload("Trading_Pair").
+		Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? And Settled=?", "Buy", false)
 	return all_data
 }
 

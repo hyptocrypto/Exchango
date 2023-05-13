@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Trading_Pairs struct {
 	gorm.Model
@@ -14,6 +18,7 @@ type Trading_Pairs struct {
 
 type Orders struct {
 	gorm.Model
+	CreatedAt       time.Time
 	Trading_PairID  uint
 	Trading_Pair    Trading_Pairs
 	Order_Type      string

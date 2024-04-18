@@ -23,7 +23,7 @@ func main() {
 		panic(err)
 	}
 	defer sqlDB.Close()
-	go engine.Update_data_live(db)
+	// go engine.Update_data_live(db)
 	go engine.Settle_orders_live(db)
 	r := mux.NewRouter()
 	handlers.SetupwsRoutes(r)

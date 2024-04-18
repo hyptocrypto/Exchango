@@ -66,6 +66,7 @@ func open_sell_orders(db *gorm.DB) []models.Orders {
 	var all_data []models.Orders
 	db.Model(&models.Orders{}).
 		Preload("Trading_Pair").
+		Order("created_at asc").
 		Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? AND Settled=?", "Sell", false)
 	return all_data
 }
@@ -74,6 +75,7 @@ func open_buy_orders(db *gorm.DB) []models.Orders {
 	var all_data []models.Orders
 	db.Model(&models.Orders{}).
 		Preload("Trading_Pair").
+		Order("created_at asc").
 		Find(&all_data, "Price in (select price from Orders group by price having count(*)>1) AND Order_Type=? And Settled=?", "Buy", false)
 	return all_data
 }
@@ -111,8 +113,7 @@ func settle_orders(db *gorm.DB) {
 					db.Find(&sell_order, "ID=?", sell.ID)
 					db.Model(&sell_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
 
-				}
-				if sell_orders[sell_index].Current_Amount > buy_orders[buy_index].Current_Amount && buy_orders[buy_index].Current_Amount > 0 {
+				} else if sell_orders[sell_index].Current_Amount > buy_orders[buy_index].Current_Amount && buy_orders[buy_index].Current_Amount > 0 {
 					fmt.Println("sell - buy")
 					sell_orders[sell_index].Current_Amount = sell_orders[sell_index].Current_Amount - buy_orders[sell_index].Current_Amount
 					buy_orders[buy_index].Current_Amount = 0
@@ -126,8 +127,7 @@ func settle_orders(db *gorm.DB) {
 					db.Find(&buy_order, "ID=?", buy.ID)
 					db.Model(&buy_order).Updates(map[string]interface{}{"Current_Amount": 0, "Settled": true})
 
-				}
-				if buy_orders[buy_index].Current_Amount == sell_orders[sell_index].Current_Amount {
+				} else if buy_orders[buy_index].Current_Amount == sell_orders[sell_index].Current_Amount {
 					fmt.Println("buy = sell")
 					fmt.Println(buy_orders[buy_index].Current_Amount, sell_orders[sell_index].Current_Amount)
 					buy_orders[buy_index].Current_Amount = 0

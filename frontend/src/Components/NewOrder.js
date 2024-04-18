@@ -76,7 +76,6 @@ class NewOrder extends React.Component {
             .then(response => response.json)
             .then(function (response) {
                 console.log(response)
-                window.confirm("Order Submitted!")
             })
     }
 

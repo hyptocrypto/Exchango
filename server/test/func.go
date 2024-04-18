@@ -9,11 +9,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func select_first_order(db *gorm.DB) models.Orders {
-	var order models.Orders
-	db.Order("created_at desc").Find(&order)
-	fmt.Println(order)
-	return order
+func select_first_order(db *gorm.DB) []models.Orders {
+	var orders []models.Orders
+	db.Order("created_at asc").Find(&orders)
+	orders.
+	for _, order := range orders {
+		fmt.Println(order.CreatedAt)
+		fmt.Println("-------------------------------")
+	}
+	return orders
 }
 
 func main() {
